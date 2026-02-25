@@ -20,3 +20,11 @@ class MazeGenerator:
                     walls &= ~4
                     self.grid[y+1][x] &= ~1
                 self.grid[y][x] = walls
+
+    def solve(self, start, end):
+        path = ""
+        x, y = start
+        while x < end[0]:
+            path += "E"
+            x += 1
+        return path
