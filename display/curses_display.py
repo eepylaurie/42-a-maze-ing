@@ -4,7 +4,7 @@ from dummy_gen import MazeGenerator
 
 N, E, S, W = 1, 2, 4, 8
 
-CELL_W = 4
+CELL_W = 3
 CELL_H = 2
 
 WALL = 1
