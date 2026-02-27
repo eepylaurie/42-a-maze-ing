@@ -1,4 +1,5 @@
 import curses
+import time
 from typing import Optional
 from dummy_gen import MazeGenerator
 
@@ -247,6 +248,21 @@ def _main(
             path = get_path(gen, entry, exit_)
         elif key == ord("2") or key == ord("p"):
             show_path = not show_path
+
+            if show_path:
+                for x, y in path:
+                    if (x, y) not in (entry, exit_):
+                        draw_cell(
+                            stdscr,
+                            x,
+                            y,
+                            gen.grid[y][x],
+                            PATH,
+                            width,
+                            height,
+                        )
+                        stdscr.refresh()
+                        time.sleep(0.02)
         elif key == ord("3") or key == ord("c"):
             color_index = (color_index + 1) % len(wall_colors)
 
