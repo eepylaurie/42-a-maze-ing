@@ -13,6 +13,7 @@ CORRIDOR = 2
 PATH = 3
 ENTRY_COLOR = 4
 EXIT_COLOR = 5
+PATTERN_COLOR = 6
 
 
 def init_colors() -> None:
@@ -24,6 +25,7 @@ def init_colors() -> None:
     curses.init_pair(PATH, curses.COLOR_CYAN, curses.COLOR_CYAN)
     curses.init_pair(ENTRY_COLOR, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
     curses.init_pair(EXIT_COLOR, curses.COLOR_RED, curses.COLOR_RED)
+    curses.init_pair(PATTERN_COLOR, curses.COLOR_WHITE, curses.COLOR_WHITE)
 
 
 def draw_cell(
@@ -116,6 +118,8 @@ def draw_maze(
                 color = EXIT_COLOR
             elif show_path and (x, y) in path:
                 color = PATH
+            elif cell == 15:
+                color = PATTERN_COLOR
             else:
                 color = CORRIDOR
 
