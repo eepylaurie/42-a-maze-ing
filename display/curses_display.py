@@ -48,22 +48,24 @@ def draw_cell(
     cell_pair = curses.color_pair(color_pair)
 
     try:
+        # 1. Draw the center of the cell
         for r in range(CELL_H):
             stdscr.addstr(row + r, col, " " * CELL_W, cell_pair)
 
+        # 2. Draw North Wall & North-East/West Corners
         if cell & N:
-            stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
+            stdscr.addstr(row - 1, col - 1, " " * (CELL_W + 2), wall_pair)
 
+        # 3. Draw South Wall & South-East/West Corners
         if cell & S:
-            stdscr.addstr(row + CELL_H, col, " " * CELL_W, wall_pair)
+            stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
 
+        # 4. Draw West and East Walls (filling vertical gaps)
         for r in range(CELL_H):
-            pair = wall_pair if (cell & W) else cell_pair
-            stdscr.addstr(row + r, col - 1, " ", pair)
-
-        for r in range(CELL_H):
-            pair = wall_pair if (cell & E) else cell_pair
-            stdscr.addstr(row + r, col + CELL_W, " ", pair)
+            if cell & W:
+                stdscr.addstr(row + r, col - 1, " ", wall_pair)
+            if cell & E:
+                stdscr.addstr(row + r, col + CELL_W, " ", wall_pair)
 
     except curses.error:
         pass
@@ -154,8 +156,8 @@ def get_path(
 
 
 def run(
-    width: int = 20,
-    height: int = 15,
+    width: int = 25,
+    height: int = 20,
     entry: tuple[int, int] = (0, 0),
     exit_: tuple[int, int] = (19, 14),
 ) -> None:
