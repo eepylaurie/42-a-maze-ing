@@ -4,8 +4,8 @@ from dummy_gen import MazeGenerator
 
 N, E, S, W = 1, 2, 4, 8
 
-CELL_W = 3
-CELL_H = 2
+CELL_W = 2
+CELL_H = 1
 
 WALL = 1
 CORRIDOR = 2
@@ -31,6 +31,8 @@ def draw_cell(
     y: int,
     cell: int,
     color_pair: int,
+    width: int,
+    height: int,
 ) -> None:
     """Draw a single maze cell at position (x, y).
 
@@ -41,8 +43,8 @@ def draw_cell(
         cell: Wall bitmask for this cell.
         color_pair: Curses color pair to use for the cell interior.
     """
-    row = y * CELL_H + 1
-    col = x * CELL_W + 1
+    row = y * (CELL_H + 1) + 1
+    col = x * (CELL_W + 1) + 1
 
     wall_pair = curses.color_pair(WALL)
     cell_pair = curses.color_pair(color_pair)
@@ -52,20 +54,25 @@ def draw_cell(
         for r in range(CELL_H):
             stdscr.addstr(row + r, col, " " * CELL_W, cell_pair)
 
-        # 2. Draw North Wall & North-East/West Corners
-        if cell & N:
-            stdscr.addstr(row - 1, col - 1, " " * (CELL_W + 2), wall_pair)
+        # 2. Always draw the North-West corner pillar
+        stdscr.addstr(row - 1, col - 1, " ", wall_pair)
 
-        # 3. Draw South Wall & South-East/West Corners
-        if cell & S:
-            stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
+        # 3. Draw North Wall
+        if cell & N or y == 0:
+            stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
 
-        # 4. Draw West and East Walls (filling vertical gaps)
-        for r in range(CELL_H):
-            if cell & W:
+        # 4. Draw West Wall
+        if cell & W or x == 0:
+            for r in range(CELL_H):
                 stdscr.addstr(row + r, col - 1, " ", wall_pair)
-            if cell & E:
-                stdscr.addstr(row + r, col + CELL_W, " ", wall_pair)
+
+        # 5. Draw Right/Bottom outer boundaries
+        if x == width - 1:
+            for r in range(CELL_H + 1):
+                stdscr.addstr(row + r - 1, col + CELL_W, " ", wall_pair)
+
+        if y == height - 1:
+            stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
 
     except curses.error:
         pass
@@ -73,7 +80,7 @@ def draw_cell(
 
 def draw_maze(
     stdscr: curses.window,
-    grid: int,
+    grid: list[list[int]],
     width: int,
     height: int,
     entry: tuple[int, int],
@@ -111,15 +118,18 @@ def draw_maze(
             else:
                 color = CORRIDOR
 
-            draw_cell(stdscr, x, y, cell, color)
+            draw_cell(stdscr, x, y, cell, color, width, height)
 
-    menu_row = height * CELL_H + 3
-    stdscr.addstr(menu_row, 0, "=== A-Maze-ing ===")
-    stdscr.addstr(menu_row + 1, 0, "1. Re-generate a new maze")
-    stdscr.addstr(menu_row + 2, 0, "2. Show/Hide path from entry to exit")
-    stdscr.addstr(menu_row + 3, 0, "3. Rotate maze colors")
-    stdscr.addstr(menu_row + 4, 0, "4. Quit")
-    stdscr.addstr(menu_row + 5, 0, "Choice? (1-4): ")
+    menu_row = height * (CELL_H + 1) + 2
+    try:
+        stdscr.addstr(menu_row, 0, "=== A-Maze-ing ===")
+        stdscr.addstr(menu_row + 1, 0, "1. Re-generate a new maze")
+        stdscr.addstr(menu_row + 2, 0, "2. Show/Hide path from entry to exit")
+        stdscr.addstr(menu_row + 3, 0, "3. Rotate maze colors")
+        stdscr.addstr(menu_row + 4, 0, "4. Quit")
+        stdscr.addstr(menu_row + 5, 0, "Choice? (1-4): ")
+    except curses.error:
+        pass
 
     stdscr.refresh()
 
@@ -189,7 +199,10 @@ def _main(
         exit_: Exit coordinates as (x, y).
     """
     init_colors()
-    curses.curs_set(0)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
 
     wall_colors = [
         curses.COLOR_YELLOW,
