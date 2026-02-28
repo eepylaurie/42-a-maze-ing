@@ -531,6 +531,26 @@ def _main(
         elif action == "color":
             current_theme_idx = (current_theme_idx + 1) % len(theme_names)
             apply_theme(theme_names[current_theme_idx])
+            if show_path:
+                draw_maze(
+                    stdscr,
+                    gen.grid,
+                    width,
+                    height,
+                    entry,
+                    exit_,
+                    path,
+                    show_path=False
+                )
+                animate_path(
+                    stdscr,
+                    gen.grid,
+                    width,
+                    height,
+                    entry,
+                    exit_,
+                    path,
+                )
 
 
 if __name__ == "__main__":
