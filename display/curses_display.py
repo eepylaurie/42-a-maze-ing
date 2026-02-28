@@ -16,6 +16,60 @@ EXIT_COLOR = 5
 PATTERN_COLOR = 6
 
 
+def rgb_to_curses(r: int, g: int, b: int) -> tuple[int, int, int]:
+    return int(r / 255 * 1000), int(g / 255 * 1000), int(b / 255 * 1000)
+
+
+THEMES = {
+    "42": {
+        "wall": (2, 189, 171),
+        "corridor": (0, 0, 0),
+        "path": (213, 68, 137),
+        "entry": (0, 255, 131),
+        "exit": (238, 93, 108),
+        "pattern": (255, 255, 255),
+    },
+    "Laurie": {
+        "wall": (255, 186, 186),
+        "corridor": (0, 0, 0),
+        "path": (198, 111, 128),
+        "entry": (166, 213, 120),
+        "exit": (244, 126, 152),
+        "pattern": (255, 255, 255),
+    },
+    "Elef": {
+        "wall": (100, 200, 255),
+        "corridor": (0, 0, 0),
+        "path": (255, 150, 50),
+        "entry": (166, 213, 120),
+        "exit": (244, 126, 152),
+        "pattern": (255, 255, 255),
+    }
+}
+
+
+def apply_theme(theme_name: str) -> None:
+    """Apply a specific color theme to the curses environment."""
+    if not curses.can_change_color():
+        return
+
+    theme = THEMES[theme_name]
+
+    curses.init_color(10, *rgb_to_curses(*theme["wall"]))
+    curses.init_color(11, *rgb_to_curses(*theme["corridor"]))
+    curses.init_color(12, *rgb_to_curses(*theme["path"]))
+    curses.init_color(13, *rgb_to_curses(*theme["entry"]))
+    curses.init_color(14, *rgb_to_curses(*theme["exit"]))
+    curses.init_color(15, *rgb_to_curses(*theme["pattern"]))
+
+    curses.init_pair(WALL, 10, 10)
+    curses.init_pair(CORRIDOR, 11, 11)
+    curses.init_pair(PATH, 12, 12)
+    curses.init_pair(ENTRY_COLOR, 13, 13)
+    curses.init_pair(EXIT_COLOR, 14, 14)
+    curses.init_pair(PATTERN_COLOR, 15, 15)
+
+
 def init_colors() -> None:
     """Initialise curses color pairs for the display."""
     curses.start_color()
@@ -53,23 +107,18 @@ def draw_cell(
     cell_pair = curses.color_pair(color_pair)
 
     try:
-        # 1. Draw the center of the cell
         for r in range(CELL_H):
             stdscr.addstr(row + r, col, " " * CELL_W, cell_pair)
 
-        # 2. Always draw the North-West corner pillar
         stdscr.addstr(row - 1, col - 1, " ", wall_pair)
 
-        # 3. Draw North Wall
         if cell & N or y == 0:
             stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
 
-        # 4. Draw West Wall
         if cell & W or x == 0:
             for r in range(CELL_H):
                 stdscr.addstr(row + r, col - 1, " ", wall_pair)
 
-        # 5. Draw Right/Bottom outer boundaries
         if x == width - 1:
             for r in range(CELL_H + 1):
                 stdscr.addstr(row + r - 1, col + CELL_W, " ", wall_pair)
@@ -415,13 +464,6 @@ def _main(
 
     show_start_screen(stdscr)
 
-    wall_colors = [
-        curses.COLOR_YELLOW,
-        curses.COLOR_GREEN,
-        curses.COLOR_BLUE,
-        curses.COLOR_WHITE,
-    ]
-    color_index = 0
     seed = 42
     show_path = False
 
@@ -429,13 +471,12 @@ def _main(
     gen.generate(start_pos=entry)
     path = get_path(gen, entry, exit_)
 
-    while True:
-        curses.init_pair(
-            WALL,
-            wall_colors[color_index],
-            wall_colors[color_index],
-        )
+    theme_names = list(THEMES.keys())
+    current_theme_idx = 0
 
+    apply_theme(theme_names[current_theme_idx])
+
+    while True:
         draw_maze(
             stdscr,
             gen.grid,
@@ -488,7 +529,8 @@ def _main(
                     path,
                 )
         elif action == "color":
-            color_index = (color_index + 1) % len(wall_colors)
+            current_theme_idx = (current_theme_idx + 1) % len(theme_names)
+            apply_theme(theme_names[current_theme_idx])
 
 
 if __name__ == "__main__":
