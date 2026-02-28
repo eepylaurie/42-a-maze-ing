@@ -125,17 +125,6 @@ def draw_maze(
 
             draw_cell(stdscr, x, y, cell, color, width, height)
 
-    menu_row = height * (CELL_H + 1) + 2
-    try:
-        stdscr.addstr(menu_row, 0, "=== A-Maze-ing ===")
-        stdscr.addstr(menu_row + 1, 0, "1. Re-generate a new maze")
-        stdscr.addstr(menu_row + 2, 0, "2. Show/Hide path from entry to exit")
-        stdscr.addstr(menu_row + 3, 0, "3. Rotate maze colors")
-        stdscr.addstr(menu_row + 4, 0, "4. Quit")
-        stdscr.addstr(menu_row + 5, 0, "Choice? (1-4): ")
-    except curses.error:
-        pass
-
     stdscr.refresh()
 
 
@@ -282,9 +271,81 @@ def show_start_screen(stdscr: curses.window) -> None:
     stdscr.getch()
 
 
+def show_menu(
+        stdscr: curses.window,
+        show_path: bool,
+        width: int,
+        height: int,
+) -> str:
+    """Display an interactive navigable menu.
+
+    Args:
+        stdscr: The curses screen object.
+        show_path: Current path visibility state (to show correct label).
+
+    Returns:
+        A string indicating the selected action:
+        'regenerate', 'path', 'color', 'quit'.
+    """
+    options = [
+        "Re-generate maze",
+        "Show path" if not show_path else "Hide path",
+        "Rotate colors",
+        "Quit",
+    ]
+    actions = ["regenerate", "path", "color", "quit"]
+    selected = 0
+    screen_h, screen_w = stdscr.getmaxyx()
+    maze_bottom = height * (CELL_H + 1) + 2
+    menu_start_row = maze_bottom + 1
+    maze_width_cols = width * (CELL_W + 1) + 1
+    center_col = maze_width_cols // 2
+    while True:
+        for i in range(len(options)):
+            try:
+                stdscr.addstr(menu_start_row + i, 0, " " * screen_w)
+            except curses.error:
+                pass
+        for i, option in enumerate(options):
+            max_len = max(len(o) for o in options) + 6
+            col = center_col - max_len // 2
+            try:
+                if i == selected:
+                    stdscr.addstr(
+                        menu_start_row + i,
+                        col,
+                        f" > {option} ",
+                        curses.color_pair(WALL) | curses.A_BOLD,
+                    )
+                else:
+                    stdscr.addstr(
+                        menu_start_row + i,
+                        col,
+                        f"   {option} ",
+                    )
+            except curses.error:
+                pass
+        stdscr.refresh()
+        key = stdscr.getch()
+        if key == curses.KEY_UP:
+            selected = (selected - 1) % len(options)
+        elif key == curses.KEY_DOWN:
+            selected = (selected + 1) % len(options)
+        elif key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
+            return actions[selected]
+        elif key == ord("q") or key == ord("4"):
+            return ("quit")
+        elif key == ord("r") or key == ord("1"):
+            return "regenerate"
+        elif key == ord("p") or key == ord("2"):
+            return "path"
+        elif key == ord("c") or key == ord("3"):
+            return "color"
+
+
 def run(
-    width: int = 25,
-    height: int = 20,
+    width: int = 20,
+    height: int = 15,
     entry: tuple[int, int] = (0, 0),
     exit_: tuple[int, int] = (19, 14),
 ) -> None:
@@ -321,6 +382,8 @@ def _main(
     except curses.error:
         pass
 
+    stdscr.keypad(True)
+
     show_start_screen(stdscr)
 
     wall_colors = [
@@ -355,18 +418,16 @@ def _main(
             show_path,
         )
 
-        key = stdscr.getch()
-
-        if key == ord("4") or key == ord("q"):
+        action = show_menu(stdscr, show_path, width, height)
+        if action == "quit":
             break
-        elif key == ord("1") or key == ord("r"):
+        elif action == "regenerate":
             seed += 1
             gen = MazeGenerator(width=width, height=height, seed=seed)
             gen.generate(start_pos=entry)
             path = get_path(gen, entry, exit_)
-        elif key == ord("2") or key == ord("p"):
+        elif action == "path":
             show_path = not show_path
-
             if show_path:
                 for x, y in path:
                     if (x, y) not in (entry, exit_):
@@ -381,7 +442,7 @@ def _main(
                         )
                         stdscr.refresh()
                         time.sleep(0.02)
-        elif key == ord("3") or key == ord("c"):
+        elif action == "color":
             color_index = (color_index + 1) % len(wall_colors)
 
 
