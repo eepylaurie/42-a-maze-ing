@@ -25,24 +25,24 @@ THEMES = {
         "wall": (2, 189, 171),
         "corridor": (0, 0, 0),
         "path": (213, 68, 137),
-        "entry": (0, 255, 131),
-        "exit": (238, 93, 108),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
         "pattern": (255, 255, 255),
     },
     "Laurie": {
-        "wall": (255, 186, 186),
+        "wall": (184, 92, 138),
         "corridor": (0, 0, 0),
-        "path": (198, 111, 128),
-        "entry": (166, 213, 120),
-        "exit": (244, 126, 152),
-        "pattern": (255, 255, 255),
+        "path": (244, 170, 145),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
+        "pattern": (249, 213, 146),
     },
     "Elef": {
         "wall": (100, 200, 255),
         "corridor": (0, 0, 0),
         "path": (255, 150, 50),
-        "entry": (166, 213, 120),
-        "exit": (244, 126, 152),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
         "pattern": (255, 255, 255),
     }
 }
@@ -90,6 +90,8 @@ def draw_cell(
     color_pair: int,
     width: int,
     height: int,
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> None:
     """Draw a single maze cell at position (x, y).
 
@@ -100,8 +102,8 @@ def draw_cell(
         cell: Wall bitmask for this cell.
         color_pair: Curses color pair to use for the cell interior.
     """
-    row = y * (CELL_H + 1) + 1
-    col = x * (CELL_W + 1) + 1
+    row = offset_y + y * (CELL_H + 1) + 1
+    col = offset_x + x * (CELL_W + 1) + 1
 
     wall_pair = curses.color_pair(WALL)
     cell_pair = curses.color_pair(color_pair)
@@ -139,6 +141,8 @@ def draw_maze(
     exit_: tuple[int, int],
     path: Optional[list[tuple[int, int]]] = None,
     show_path: bool = False,
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> None:
     """Draw the full maze on screen.
 
@@ -172,7 +176,9 @@ def draw_maze(
             else:
                 color = CORRIDOR
 
-            draw_cell(stdscr, x, y, cell, color, width, height)
+            draw_cell(
+                stdscr, x, y, cell, color, width, height, offset_x, offset_y
+            )
 
     stdscr.refresh()
 
@@ -310,7 +316,7 @@ def show_start_screen(stdscr: curses.window) -> None:
     prompt = "Press any key to start..."
     try:
         stdscr.addstr(
-            start_row + 10,
+            start_row + 8,
             screen_w // 2 - len(prompt) // 2,
             prompt,
         )
@@ -325,6 +331,8 @@ def show_menu(
         show_path: bool,
         width: int,
         height: int,
+        offset_x: int = 0,
+        offset_y: int = 0,
 ) -> str:
     """Display an interactive navigable menu.
 
@@ -345,10 +353,10 @@ def show_menu(
     actions = ["regenerate", "path", "color", "quit"]
     selected = 0
     screen_h, screen_w = stdscr.getmaxyx()
-    maze_bottom = height * (CELL_H + 1) + 2
-    menu_start_row = maze_bottom + 1
+    maze_bottom = offset_y + height * (CELL_H + 1) + 1
+    menu_start_row = maze_bottom + 2
     maze_width_cols = width * (CELL_W + 1) + 1
-    center_col = maze_width_cols // 2
+    center_col = offset_x + (maze_width_cols // 2)
     while True:
         for i in range(len(options)):
             try:
@@ -364,7 +372,7 @@ def show_menu(
                         menu_start_row + i,
                         col,
                         f" > {option} ",
-                        curses.color_pair(WALL) | curses.A_BOLD,
+                        curses.A_BOLD,
                     )
                 else:
                     stdscr.addstr(
@@ -418,6 +426,8 @@ def animate_path(
         exit_: tuple[int, int],
         path: list[tuple[int, int]],
         delay: float = 0.02,
+        offset_x: int = 0,
+        offset_y: int = 0,
 ) -> None:
     """Animate the solution path cell by cell.
 
@@ -433,7 +443,10 @@ def animate_path(
     """
     for x, y in path:
         if (x, y) not in (entry, exit_):
-            draw_cell(stdscr, x, y, grid[y][x], PATH, width, height)
+            draw_cell(
+                stdscr, x, y, grid[y][x], PATH, width, height,
+                offset_x, offset_y
+            )
             stdscr.refresh()
             time.sleep(delay)
 
@@ -477,6 +490,12 @@ def _main(
     apply_theme(theme_names[current_theme_idx])
 
     while True:
+        screen_h, screen_w = stdscr.getmaxyx()
+        maze_w = width * (CELL_W + 1) + 2
+        maze_h = height * (CELL_H + 1) + 2
+        menu_h = 6
+        offset_x = max(0, (screen_w - maze_w) // 2)
+        offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
         draw_maze(
             stdscr,
             gen.grid,
@@ -486,9 +505,13 @@ def _main(
             exit_,
             path,
             show_path,
+            offset_x,
+            offset_y,
         )
 
-        action = show_menu(stdscr, show_path, width, height)
+        action = show_menu(
+            stdscr, show_path, width, height, offset_x, offset_y
+        )
         if action == "quit":
             break
         elif action == "regenerate":
@@ -505,7 +528,9 @@ def _main(
                     entry,
                     exit_,
                     path,
-                    show_path=False
+                    False,
+                    offset_x,
+                    offset_y,
                 )
                 animate_path(
                     stdscr,
@@ -515,6 +540,8 @@ def _main(
                     entry,
                     exit_,
                     path,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
                 )
         elif action == "path":
             show_path = not show_path
@@ -527,6 +554,8 @@ def _main(
                     entry,
                     exit_,
                     path,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
                 )
         elif action == "color":
             current_theme_idx = (current_theme_idx + 1) % len(theme_names)
@@ -540,7 +569,9 @@ def _main(
                     entry,
                     exit_,
                     path,
-                    show_path=False
+                    False,
+                    offset_x,
+                    offset_y,
                 )
                 animate_path(
                     stdscr,
@@ -550,6 +581,8 @@ def _main(
                     entry,
                     exit_,
                     path,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
                 )
 
 
