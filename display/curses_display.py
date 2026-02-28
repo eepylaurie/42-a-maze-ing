@@ -360,6 +360,35 @@ def run(
     curses.wrapper(lambda stdscr: _main(stdscr, width, height, entry, exit_))
 
 
+def animate_path(
+        stdscr: curses.window,
+        grid: list[list[int]],
+        width: int,
+        height: int,
+        entry: tuple[int, int],
+        exit_: tuple[int, int],
+        path: list[tuple[int, int]],
+        delay: float = 0.02,
+) -> None:
+    """Animate the solution path cell by cell.
+
+    Args:
+        stdscr: The curses screen object.
+        grid: 2D list of wall bitmasks.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+        path: List of (x, y) coordinates forming the solution path.
+        delay: Time in seconds to wait between drawing each cell.
+    """
+    for x, y in path:
+        if (x, y) not in (entry, exit_):
+            draw_cell(stdscr, x, y, grid[y][x], PATH, width, height)
+            stdscr.refresh()
+            time.sleep(delay)
+
+
 def _main(
     stdscr: curses.window,
     width: int,
@@ -426,22 +455,38 @@ def _main(
             gen = MazeGenerator(width=width, height=height, seed=seed)
             gen.generate(start_pos=entry)
             path = get_path(gen, entry, exit_)
+            if show_path:
+                draw_maze(
+                    stdscr,
+                    gen.grid,
+                    width,
+                    height,
+                    entry,
+                    exit_,
+                    path,
+                    show_path=False
+                )
+                animate_path(
+                    stdscr,
+                    gen.grid,
+                    width,
+                    height,
+                    entry,
+                    exit_,
+                    path,
+                )
         elif action == "path":
             show_path = not show_path
             if show_path:
-                for x, y in path:
-                    if (x, y) not in (entry, exit_):
-                        draw_cell(
-                            stdscr,
-                            x,
-                            y,
-                            gen.grid[y][x],
-                            PATH,
-                            width,
-                            height,
-                        )
-                        stdscr.refresh()
-                        time.sleep(0.02)
+                animate_path(
+                    stdscr,
+                    gen.grid,
+                    width,
+                    height,
+                    entry,
+                    exit_,
+                    path,
+                )
         elif action == "color":
             color_index = (color_index + 1) % len(wall_colors)
 
