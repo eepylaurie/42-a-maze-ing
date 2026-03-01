@@ -92,6 +92,7 @@ def draw_cell(
     height: int,
     offset_x: int = 0,
     offset_y: int = 0,
+    path: Optional[list[tuple[int, int]]] = None,
 ) -> None:
     """Draw a single maze cell at position (x, y).
 
@@ -107,6 +108,7 @@ def draw_cell(
 
     wall_pair = curses.color_pair(WALL)
     cell_pair = curses.color_pair(color_pair)
+    corridor_pair = curses.color_pair(CORRIDOR)
 
     try:
         for r in range(CELL_H):
@@ -116,10 +118,22 @@ def draw_cell(
 
         if cell & N or y == 0:
             stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
+        else:
+            if color_pair == PATH and (x, y - 1) not in path:
+                stdscr.addstr(row - 1, col, " " * CELL_W, corridor_pair)
+            else:
+                stdscr.addstr(row - 1, col, " " * CELL_W, cell_pair)
 
         if cell & W or x == 0:
             for r in range(CELL_H):
                 stdscr.addstr(row + r, col - 1, " ", wall_pair)
+        else:
+            if color_pair == PATH and (x - 1, y) not in path:
+                for r in range(CELL_H):
+                    stdscr.addstr(row + r, col - 1, " ", corridor_pair)
+            else:
+                for r in range(CELL_H):
+                    stdscr.addstr(row + r, col - 1, " ", cell_pair)
 
         if x == width - 1:
             for r in range(CELL_H + 1):
@@ -128,6 +142,25 @@ def draw_cell(
         if y == height - 1:
             stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
 
+    except curses.error:
+        pass
+
+
+def draw_overlay(
+        stdscr: curses.window,
+        x: int,
+        y: int,
+        color_pair: int,
+        offset_x: int = 0,
+        offset_y: int = 0,
+) -> None:
+    """Draw a 2x1 block perfectly inside the cell."""
+    row = offset_y + y * (CELL_H + 1) + 1
+    col = offset_x + x * (CELL_W + 1) + 1
+    pair = curses.color_pair(color_pair)
+    try:
+        for r in range(CELL_H):
+            stdscr.addstr(row + r, col, " " * CELL_W, pair)
     except curses.error:
         pass
 
@@ -165,11 +198,7 @@ def draw_maze(
         for x in range(width):
             cell = grid[y][x]
 
-            if (x, y) == entry:
-                color = ENTRY_COLOR
-            elif (x, y) == exit_:
-                color = EXIT_COLOR
-            elif show_path and (x, y) in path:
+            if show_path and (x, y) in path:
                 color = PATH
             elif cell == 15:
                 color = PATTERN_COLOR
@@ -177,8 +206,12 @@ def draw_maze(
                 color = CORRIDOR
 
             draw_cell(
-                stdscr, x, y, cell, color, width, height, offset_x, offset_y
+                stdscr, x, y, cell, color, width, height,
+                offset_x, offset_y, path
             )
+
+    draw_overlay(stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y)
+    draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
 
     stdscr.refresh()
 
@@ -198,7 +231,7 @@ def get_path(
     Returns:
         A list of (x, y) tuples representing the solution path.
     """
-    path = []
+    path = [entry]
     x, y = entry
     directions: dict[str, tuple[int, int]] = {
         "N": (0, -1),
@@ -442,13 +475,77 @@ def animate_path(
         delay: Time in seconds to wait between drawing each cell.
     """
     for x, y in path:
-        if (x, y) not in (entry, exit_):
+        draw_cell(
+            stdscr, x, y, grid[y][x], PATH, width, height,
+            offset_x, offset_y, path
+        )
+
+        draw_overlay(
+            stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
+        )
+        draw_overlay(
+            stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y
+        )
+
+        stdscr.refresh()
+        time.sleep(delay)
+
+
+def animate_generation(
+    stdscr: curses.window,
+    gen: MazeGenerator,
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+    delay: float = 0.005,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> None:
+    """Animate the maze being carved step-by-step."""
+    stdscr.clear()
+    for y in range(height):
+        for x in range(width):
+            if gen.grid[y][x] == 15 and (x, y) in gen.visited:
+                color = PATTERN_COLOR
+            else:
+                color = CORRIDOR
             draw_cell(
-                stdscr, x, y, grid[y][x], PATH, width, height,
-                offset_x, offset_y
+                stdscr,
+                x,
+                y,
+                gen.grid[y][x],
+                color,
+                width,
+                height,
+                offset_x,
+                offset_y
             )
-            stdscr.refresh()
-            time.sleep(delay)
+    draw_overlay(stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y)
+    draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
+    stdscr.refresh()
+
+    for x, y in gen.generate(start_pos=entry):
+        draw_cell(
+            stdscr,
+            x,
+            y,
+            gen.grid[y][x],
+            color,
+            width,
+            height,
+            offset_x,
+            offset_y
+        )
+        draw_overlay(
+            stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
+        )
+        draw_overlay(
+            stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y
+            )
+
+        stdscr.refresh()
+        time.sleep(delay)
 
 
 def _main(
@@ -481,13 +578,29 @@ def _main(
     show_path = False
 
     gen = MazeGenerator(width=width, height=height, seed=seed)
-    gen.generate(start_pos=entry)
-    path = get_path(gen, entry, exit_)
+    screen_h, screen_w = stdscr.getmaxyx()
+    maze_w = width * (CELL_W + 1) + 2
+    maze_h = height * (CELL_H + 1) + 2
+    menu_h = 6
+    offset_x = max(0, (screen_w - maze_w) // 2)
+    offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
 
     theme_names = list(THEMES.keys())
     current_theme_idx = 0
-
     apply_theme(theme_names[current_theme_idx])
+
+    animate_generation(
+        stdscr,
+        gen,
+        width,
+        height,
+        entry,
+        exit_,
+        offset_x=offset_x,
+        offset_y=offset_y
+    )
+
+    path = get_path(gen, entry, exit_)
 
     while True:
         screen_h, screen_w = stdscr.getmaxyx()
@@ -496,6 +609,7 @@ def _main(
         menu_h = 6
         offset_x = max(0, (screen_w - maze_w) // 2)
         offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
+
         draw_maze(
             stdscr,
             gen.grid,
@@ -517,21 +631,18 @@ def _main(
         elif action == "regenerate":
             seed += 1
             gen = MazeGenerator(width=width, height=height, seed=seed)
-            gen.generate(start_pos=entry)
+            animate_generation(
+                stdscr,
+                gen,
+                width,
+                height,
+                entry,
+                exit_,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
             path = get_path(gen, entry, exit_)
             if show_path:
-                draw_maze(
-                    stdscr,
-                    gen.grid,
-                    width,
-                    height,
-                    entry,
-                    exit_,
-                    path,
-                    False,
-                    offset_x,
-                    offset_y,
-                )
                 animate_path(
                     stdscr,
                     gen.grid,

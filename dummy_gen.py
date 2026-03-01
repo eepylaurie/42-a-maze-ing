@@ -1,37 +1,6 @@
-# import random
-
-
-# class MazeGenerator:
-#     def __init__(self, width, height, seed=None):
-#         self.width = width
-#         self.height = height
-#         if seed:
-#             random.seed(seed)
-#         self.grid = [[15 for _ in range(width)] for _ in range(height)]
-
-#     def generate(self, start_pos=(0, 0)):
-#         for y in range(self.height):
-#             for x in range(self.width):
-#                 walls = 15
-#                 if random.random() > 0.5 and x + 1 < self.width:
-#                     walls &= ~2
-#                     self.grid[y][x+1] &= ~8
-#                 if random.random() > 0.5 and y + 1 < self.height:
-#                     walls &= ~4
-#                     self.grid[y+1][x] &= ~1
-#                 self.grid[y][x] = walls
-
-#     def solve(self, start, end):
-#         path = ""
-#         x, y = start
-#         while x < end[0]:
-#             path += "E"
-#             x += 1
-#         return path
-
 import random
 from collections import deque
-from typing import List, Tuple, Set, Optional
+from typing import List, Tuple, Set, Optional, Iterator
 
 N, E, S, W = 1, 2, 4, 8
 OPPOSITE = {N: S, S: N, E: W, W: E}
@@ -63,17 +32,19 @@ class MazeGenerator:
             if 0 <= nx < self.width and 0 <= ny < self.height:
                 self.visited.add((nx, ny))
 
-    def generate(self, start_pos: Tuple[int, int] = (0, 0)) -> None:
+    def generate(
+        self, start_pos: Tuple[int, int] = (0, 0)
+    ) -> Iterator[Tuple[int, int]]:
         self._apply_42_pattern()
         if start_pos in self.visited:
             for x in range(self.width):
                 for y in range(self.height):
                     if (x, y) not in self.visited:
-                        self._backtrack(x, y)
+                        yield from self._backtrack(x, y)
                         return
-        self._backtrack(start_pos[0], start_pos[1])
+        yield from self._backtrack(start_pos[0], start_pos[1])
 
-    def _backtrack(self, x: int, y: int) -> None:
+    def _backtrack(self, x: int, y: int) -> Iterator[Tuple[int, int]]:
         self.visited.add((x, y))
         directions = [N, E, S, W]
         random.shuffle(directions)
@@ -89,7 +60,11 @@ class MazeGenerator:
             ):
                 self.grid[y][x] &= ~direction
                 self.grid[ny][nx] &= ~OPPOSITE[direction]
-                self._backtrack(nx, ny)
+
+                yield x, y
+                yield nx, ny
+
+                yield from self._backtrack(nx, ny)
 
     def solve(self, start: Tuple[int, int], end: Tuple[int, int]) -> str:
         queue = deque([(start, "")])
