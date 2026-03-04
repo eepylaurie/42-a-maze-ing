@@ -1,0 +1,664 @@
+"""Curses-based graphical terminal display for A-Maze-ing."""
+
+import curses
+import random
+import time
+from typing import Optional
+
+from mazegen.generator import MazeGenerator
+
+# Bitwise directions and cell dimensions
+N, E, S, W = 1, 2, 4, 8
+CELL_W = 2
+CELL_H = 1
+
+# Color pair constants
+WALL = 1
+CORRIDOR = 2
+PATH = 3
+ENTRY_COLOR = 4
+EXIT_COLOR = 5
+PATTERN_COLOR = 6
+
+
+def rgb_to_curses(r: int, g: int, b: int) -> tuple[int, int, int]:
+    """Convert standard RGB (0-255) to curses RGB scale (0-1000)"""
+    return int(r / 255 * 1000), int(g / 255 * 1000), int(b / 255 * 1000)
+
+
+THEMES = {
+    "42": {
+        "wall": (2, 189, 171),
+        "corridor": (0, 0, 0),
+        "path": (213, 68, 137),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
+        "pattern": (255, 255, 255),
+    },
+    "Laurie": {
+        "wall": (184, 92, 138),
+        "corridor": (0, 0, 0),
+        "path": (244, 170, 145),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
+        "pattern": (249, 213, 146),
+    },
+    "Elef": {
+        "wall": (100, 200, 255),
+        "corridor": (0, 0, 0),
+        "path": (255, 150, 50),
+        "entry": (0, 231, 138),
+        "exit": (255, 41, 117),
+        "pattern": (255, 255, 255),
+    }
+}
+
+
+def apply_theme(theme_name: str) -> None:
+    """Apply a specific color theme to the curses environment."""
+    if not curses.can_change_color():
+        return
+
+    theme = THEMES[theme_name]
+
+    curses.init_color(10, *rgb_to_curses(*theme["wall"]))
+    curses.init_color(11, *rgb_to_curses(*theme["corridor"]))
+    curses.init_color(12, *rgb_to_curses(*theme["path"]))
+    curses.init_color(13, *rgb_to_curses(*theme["entry"]))
+    curses.init_color(14, *rgb_to_curses(*theme["exit"]))
+    curses.init_color(15, *rgb_to_curses(*theme["pattern"]))
+
+    curses.init_pair(WALL, 10, 10)
+    curses.init_pair(CORRIDOR, 11, 11)
+    curses.init_pair(PATH, 12, 12)
+    curses.init_pair(ENTRY_COLOR, 13, 13)
+    curses.init_pair(EXIT_COLOR, 14, 14)
+    curses.init_pair(PATTERN_COLOR, 15, 15)
+
+
+def init_colors() -> None:
+    """Set fallback colors if terminal doesn't support custom RGB."""
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(WALL, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
+    curses.init_pair(CORRIDOR, curses.COLOR_BLACK, curses.COLOR_BLACK)
+    curses.init_pair(PATH, curses.COLOR_CYAN, curses.COLOR_CYAN)
+    curses.init_pair(ENTRY_COLOR, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
+    curses.init_pair(EXIT_COLOR, curses.COLOR_RED, curses.COLOR_RED)
+    curses.init_pair(PATTERN_COLOR, curses.COLOR_WHITE, curses.COLOR_WHITE)
+
+
+def draw_overlay(
+    stdscr: curses.window,
+    x: int,
+    y: int,
+    color_pair: int,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> None:
+    """Stamp a clean 2x1 block over a cell to prevent visual color bleeding.
+
+    Args:
+        stdscr: The curses window.
+        x: Cell column in maze coordinates.
+        y: Cell row in maze coordinates.
+        color_pair: The color to fill the 2x1 block with.
+        offset_x: Terminal X offset.
+        offset_y: Terminal Y offset.
+    """
+    row = offset_y + y * (CELL_H + 1) + 1
+    col = offset_x + x * (CELL_W + 1) + 1
+    pair = curses.color_pair(color_pair)
+    try:
+        for r in range(CELL_H):
+            stdscr.addstr(row + r, col, " " * CELL_W, pair)
+    except curses.error:
+        pass
+
+
+def draw_cell(
+    stdscr: curses.window,
+    x: int,
+    y: int,
+    cell: int,
+    color_pair: int,
+    width: int,
+    height: int,
+    offset_x: int = 0,
+    offset_y: int = 0,
+    path: Optional[list[tuple[int, int]]] = None,
+) -> None:
+    """Draw a single maze cell and intelligently erase broken walls.
+
+    Args:
+        stdscr: The curses screen object.
+        x: Cell column in maze coordinates.
+        y: Cell row in maze coordinates.
+        cell: Wall bitmask for this cell.
+        color_pair: Curses color pair to use for the cell interior.
+        width: Total maze width in cells.
+        height: Total maze height in cells.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+        path: Solution path list, used for smart wall erasing.
+    """
+    if path is None:
+        path = []
+
+    row = offset_y + y * (CELL_H + 1) + 1
+    col = offset_x + x * (CELL_W + 1) + 1
+
+    wall_pair = curses.color_pair(WALL)
+    cell_pair = curses.color_pair(color_pair)
+    corridor_pair = curses.color_pair(CORRIDOR)
+
+    try:
+        # Draw interior
+        for r in range(CELL_H):
+            stdscr.addstr(row + r, col, " " * CELL_W, cell_pair)
+
+        # Draw top-left corner post
+        stdscr.addstr(row - 1, col - 1, " ", wall_pair)
+
+        # Draw North wall or erase it intelligently
+        if cell & N or y == 0:
+            stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
+        else:
+            if color_pair == PATH and (x, y - 1) not in path:
+                stdscr.addstr(row - 1, col, " " * CELL_W, corridor_pair)
+            else:
+                stdscr.addstr(row - 1, col, " " * CELL_W, cell_pair)
+
+        # Draw West wall or erase it intelligently
+        if cell & W or x == 0:
+            for r in range(CELL_H):
+                stdscr.addstr(row + r, col - 1, " ", wall_pair)
+        else:
+            if color_pair == PATH and (x - 1, y) not in path:
+                for r in range(CELL_H):
+                    stdscr.addstr(row + r, col - 1, " ", corridor_pair)
+            else:
+                for r in range(CELL_H):
+                    stdscr.addstr(row + r, col - 1, " ", cell_pair)
+
+        # Draw East boundary
+        if x == width - 1:
+            for r in range(CELL_H + 1):
+                stdscr.addstr(row + r - 1, col + CELL_W, " ", wall_pair)
+
+        # Draw South boundary
+        if y == height - 1:
+            stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
+
+    except curses.error:
+        pass
+
+
+def draw_maze(
+    stdscr: curses.window,
+    grid: list[list[int]],
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+    path: Optional[list[tuple[int, int]]] = None,
+    show_path: bool = False,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> None:
+    """Render the full generated maze onto the screen.
+
+    Args:
+        stdscr: The curses screen object.
+        grid: 2D list of wall bitmasks.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+        path: List of (x, y) coordinates forming the solution path.
+        show_path: Whether to display the solution path.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+    """
+    if path is None:
+        path = []
+
+    stdscr.clear()
+
+    for y in range(height):
+        for x in range(width):
+            cell = grid[y][x]
+
+            if show_path and (x, y) in path:
+                color = PATH
+            elif cell == 15:
+                color = PATTERN_COLOR
+            else:
+                color = CORRIDOR
+
+            draw_cell(
+                stdscr, x, y, cell, color, width, height,
+                offset_x, offset_y, path
+            )
+
+    draw_overlay(stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y)
+    draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
+    stdscr.refresh()
+
+
+def get_path(
+    gen: MazeGenerator,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+) -> list[tuple[int, int]]:
+    """Convert solution direction string into list of coordinates.
+
+    Args:
+        gen: A MazeGenerator instance that has already called generate().
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+
+    Returns:
+        A list of (x, y) tuples representing the solution path.
+    """
+    path = [entry]
+    x, y = entry
+    directions: dict[str, tuple[int, int]] = {
+        "N": (0, -1),
+        "E": (1, 0),
+        "S": (0, 1),
+        "W": (-1, 0),
+    }
+    solution = gen.solve(start=entry, end=exit_)
+    for move in solution:
+        dx, dy = directions[move]
+        x, y = x + dx, y + dy
+        path.append((x, y))
+    return path
+
+
+def show_start_screen(stdscr: curses.window) -> None:
+    """Display the animated A_MAZE_ING title sequence.
+
+    Args:
+        stdscr: The curses screen object.
+    """
+    stdscr.clear()
+    screen_h, screen_w = stdscr.getmaxyx()
+    letters = {
+        "A": ["XXXXX", "X...X", "XXXXX", "X...X", "X...X"],
+        "M": ["XXXXX", "X.X.X", "X.X.X", "X.X.X", "X.X.X"],
+        "Z": ["XXXXX", "....X", "XXXXX", "X....", "XXXXX"],
+        "E": ["XXXXX", "X....", "XXXXX", "X....", "XXXXX"],
+        "I": ["XXXXX", "..X..", "..X..", "..X..", "XXXXX"],
+        "N": ["XXXXX", "X...X", "X...X", "X...X", "X...X"],
+        "G": ["XXXXX", "X....", "X.XXX", "X...X", "XXXXX"],
+        "_": [".....", ".....", ".....", ".....", "XXXXX"],
+        " ": [".....", ".....", ".....", ".....", "....."],
+    }
+    title = "A_MAZE_ING"
+    cell_w = 2
+    spacing = 1
+    total_w = len(title) * (5 * cell_w + spacing)
+    start_col = max(0, screen_w // 2 - total_w // 2)
+    start_row = max(0, screen_h // 2 - 8)
+
+    blocks = []
+    for i, char in enumerate(title):
+        letter = letters.get(char, letters[" "])
+        letter_col = start_col + i * (5 * cell_w + spacing)
+        for row_idx, row in enumerate(letter):
+            for col_idx, pixel in enumerate(row):
+                if pixel == "X":
+                    blocks.append((
+                        start_row + row_idx,
+                        letter_col + col_idx * cell_w,
+                    ))
+
+    random.shuffle(blocks)
+    for row, col in blocks:
+        try:
+            stdscr.addstr(row, col, " " * cell_w, curses.color_pair(WALL))
+            stdscr.refresh()
+            time.sleep(0.01)
+        except curses.error:
+            pass
+
+    prompt = "Press any key to start..."
+    try:
+        stdscr.addstr(
+            start_row + 8,
+            screen_w // 2 - len(prompt) // 2,
+            prompt,
+        )
+    except curses.error:
+        pass
+    stdscr.refresh()
+    stdscr.getch()
+
+
+def show_menu(
+        stdscr: curses.window,
+        show_path: bool,
+        width: int,
+        height: int,
+        offset_x: int = 0,
+        offset_y: int = 0,
+) -> str:
+    """Display an interactive navigable menu.
+
+    Args:
+        stdscr: The curses screen object.
+        show_path: Current path visibility state (to show correct label).
+        width: Maze width in cells.
+        height: Maze height in cells.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+
+    Returns:
+        A string indicating the selected action:
+        'regenerate', 'path', 'color', 'quit'.
+    """
+    options = [
+        "Re-generate maze",
+        "Show path" if not show_path else "Hide path",
+        "Rotate colors",
+        "Quit",
+    ]
+    actions = ["regenerate", "path", "color", "quit"]
+    selected = 0
+    screen_h, screen_w = stdscr.getmaxyx()
+    maze_bottom = offset_y + height * (CELL_H + 1) + 1
+    menu_start_row = maze_bottom + 2
+    maze_width_cols = width * (CELL_W + 1) + 1
+    center_col = offset_x + (maze_width_cols // 2)
+
+    while True:
+        for i in range(len(options)):
+            try:
+                stdscr.addstr(menu_start_row + i, 0, " " * screen_w)
+            except curses.error:
+                pass
+        max_len = max(len(o) for o in options) + 6
+        for i, option in enumerate(options):
+            col = center_col - max_len // 2
+            try:
+                if i == selected:
+                    stdscr.addstr(
+                        menu_start_row + i,
+                        col,
+                        f" > {option} ",
+                        curses.A_BOLD,
+                    )
+                else:
+                    stdscr.addstr(
+                        menu_start_row + i,
+                        col,
+                        f"   {option} ",
+                    )
+            except curses.error:
+                pass
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP:
+            selected = (selected - 1) % len(options)
+        elif key == curses.KEY_DOWN:
+            selected = (selected + 1) % len(options)
+        elif key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
+            return actions[selected]
+        elif key == ord("q") or key == ord("4"):
+            return "quit"
+        elif key == ord("r") or key == ord("1"):
+            return "regenerate"
+        elif key == ord("p") or key == ord("2"):
+            return "path"
+        elif key == ord("c") or key == ord("3"):
+            return "color"
+
+
+def animate_path(
+        stdscr: curses.window,
+        grid: list[list[int]],
+        width: int,
+        height: int,
+        entry: tuple[int, int],
+        exit_: tuple[int, int],
+        path: list[tuple[int, int]],
+        delay: float = 0.02,
+        offset_x: int = 0,
+        offset_y: int = 0,
+) -> None:
+    """Animate the solution path cell by cell.
+
+    Args:
+        stdscr: The curses screen object.
+        grid: 2D list of wall bitmasks.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+        path: List of (x, y) coordinates forming the solution path.
+        delay: Time in seconds to wait between drawing each cell.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+    """
+    for x, y in path:
+        draw_cell(
+            stdscr, x, y, grid[y][x], PATH, width, height,
+            offset_x, offset_y, path
+        )
+
+        draw_overlay(
+            stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
+        )
+        draw_overlay(
+            stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y
+        )
+
+        stdscr.refresh()
+        time.sleep(delay)
+
+
+def animate_generation(
+    stdscr: curses.window,
+    gen: MazeGenerator,
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+    delay: float = 0.005,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> None:
+    """Animate the maze being carved step-by-step.
+
+    Args:
+        stdscr: The curses screen object.
+        gen: A MazeGenerator instance to generate and animate.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+        delay: Time in seconds between each carved cell.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+    """
+    stdscr.clear()
+
+    # Draw initial un-carved blocks
+    for y in range(height):
+        for x in range(width):
+            if gen.grid[y][x] == 15 and (x, y) in gen.visited:
+                color = PATTERN_COLOR
+            else:
+                color = CORRIDOR
+            draw_cell(
+                stdscr, x, y, gen.grid[y][x], color, width, height,
+                offset_x, offset_y,
+            )
+
+    draw_overlay(stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y)
+    draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
+    stdscr.refresh()
+
+    # Animate carving steps
+    for x, y in gen.generate(start_pos=entry):
+        color = PATTERN_COLOR if gen.grid[y][x] == 15 else CORRIDOR
+        draw_cell(
+            stdscr, x, y, gen.grid[y][x], color, width, height,
+            offset_x, offset_y,
+        )
+        draw_overlay(
+            stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
+        )
+        draw_overlay(
+            stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y
+        )
+        stdscr.refresh()
+        time.sleep(delay)
+
+
+def _main(
+    stdscr: curses.window,
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+) -> None:
+    """Main curses loop.
+
+    Args:
+        stdscr: The curses screen object.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+    """
+    init_colors()
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+
+    stdscr.keypad(True)
+    show_start_screen(stdscr)
+
+    seed = 42
+    show_path = False
+
+    gen = MazeGenerator(width=width, height=height, seed=seed)
+
+    screen_h, screen_w = stdscr.getmaxyx()
+    maze_w = width * (CELL_W + 1) + 2
+    maze_h = height * (CELL_H + 1) + 2
+    menu_h = 6
+    offset_x = max(0, (screen_w - maze_w) // 2)
+    offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
+
+    theme_names = list(THEMES.keys())
+    current_theme_idx = 0
+    apply_theme(theme_names[current_theme_idx])
+
+    # animate_generation(
+    #     stdscr, gen, width, height, entry, exit_,
+    #     offset_x=offset_x, offset_y=offset_y
+    # )
+    gen.generate(start_pos=entry)
+    draw_maze(
+        stdscr,
+        gen.grid,
+        width,
+        height,
+        entry,
+        exit_,
+        offset_x=offset_x,
+        offset_y=offset_y,
+    )
+
+    path = get_path(gen, entry, exit_)
+
+    while True:
+        screen_h, screen_w = stdscr.getmaxyx()
+        maze_w = width * (CELL_W + 1) + 2
+        maze_h = height * (CELL_H + 1) + 2
+        menu_h = 6
+        offset_x = max(0, (screen_w - maze_w) // 2)
+        offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
+
+        draw_maze(
+            stdscr, gen.grid, width, height, entry, exit_, path, show_path,
+            offset_x, offset_y,
+        )
+
+        action = show_menu(
+            stdscr, show_path, width, height, offset_x, offset_y
+        )
+
+        if action == "quit":
+            break
+        elif action == "regenerate":
+            seed += 1
+            gen = MazeGenerator(width=width, height=height, seed=seed)
+            # animate_generation(
+            #     stdscr, gen, width, height, entry, exit_,
+            #     offset_x=offset_x, offset_y=offset_y,
+            # )
+            gen.generate(start_pos=entry)
+            draw_maze(
+                stdscr,
+                gen.grid,
+                width,
+                height,
+                entry,
+                exit_,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+            path = get_path(gen, entry, exit_)
+            if show_path:
+                animate_path(
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
+                )
+        elif action == "path":
+            show_path = not show_path
+            if show_path:
+                animate_path(
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
+                )
+        elif action == "color":
+            current_theme_idx = (current_theme_idx + 1) % len(theme_names)
+            apply_theme(theme_names[current_theme_idx])
+            if show_path:
+                draw_maze(
+                    stdscr, gen.grid, width, height, entry, exit_, path, False,
+                    offset_x, offset_y,
+                )
+                animate_path(
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
+                )
+
+
+def run(
+    width: int = 20,
+    height: int = 15,
+    entry: tuple[int, int] = (0, 0),
+    exit_: tuple[int, int] = (19, 14),
+) -> None:
+    """Start the curses maze display.
+
+    Args:
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+    """
+    curses.wrapper(lambda stdscr: _main(stdscr, width, height, entry, exit_))
+
+
+if __name__ == "__main__":
+    run()
