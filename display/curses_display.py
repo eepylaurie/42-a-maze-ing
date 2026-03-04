@@ -7,12 +7,10 @@ from typing import Optional
 
 from mazegen.generator import MazeGenerator
 
-# Bitwise directions and cell dimensions
 N, E, S, W = 1, 2, 4, 8
 CELL_W = 2
 CELL_H = 1
 
-# Color pair constants
 WALL = 1
 CORRIDOR = 2
 PATH = 3
@@ -153,14 +151,11 @@ def draw_cell(
     corridor_pair = curses.color_pair(CORRIDOR)
 
     try:
-        # Draw interior
         for r in range(CELL_H):
             stdscr.addstr(row + r, col, " " * CELL_W, cell_pair)
 
-        # Draw top-left corner post
         stdscr.addstr(row - 1, col - 1, " ", wall_pair)
 
-        # Draw North wall or erase it intelligently
         if cell & N or y == 0:
             stdscr.addstr(row - 1, col, " " * CELL_W, wall_pair)
         else:
@@ -169,7 +164,6 @@ def draw_cell(
             else:
                 stdscr.addstr(row - 1, col, " " * CELL_W, cell_pair)
 
-        # Draw West wall or erase it intelligently
         if cell & W or x == 0:
             for r in range(CELL_H):
                 stdscr.addstr(row + r, col - 1, " ", wall_pair)
@@ -181,12 +175,10 @@ def draw_cell(
                 for r in range(CELL_H):
                     stdscr.addstr(row + r, col - 1, " ", cell_pair)
 
-        # Draw East boundary
         if x == width - 1:
             for r in range(CELL_H + 1):
                 stdscr.addstr(row + r - 1, col + CELL_W, " ", wall_pair)
 
-        # Draw South boundary
         if y == height - 1:
             stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
 
@@ -338,12 +330,12 @@ def show_start_screen(stdscr: curses.window) -> None:
 
 
 def show_menu(
-        stdscr: curses.window,
-        show_path: bool,
-        width: int,
-        height: int,
-        offset_x: int = 0,
-        offset_y: int = 0,
+    stdscr: curses.window,
+    show_path: bool,
+    width: int,
+    height: int,
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> str:
     """Display an interactive navigable menu.
 
@@ -419,16 +411,16 @@ def show_menu(
 
 
 def animate_path(
-        stdscr: curses.window,
-        grid: list[list[int]],
-        width: int,
-        height: int,
-        entry: tuple[int, int],
-        exit_: tuple[int, int],
-        path: list[tuple[int, int]],
-        delay: float = 0.02,
-        offset_x: int = 0,
-        offset_y: int = 0,
+    stdscr: curses.window,
+    grid: list[list[int]],
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
+    path: list[tuple[int, int]],
+    delay: float = 0.02,
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> None:
     """Animate the solution path cell by cell.
 
@@ -449,14 +441,12 @@ def animate_path(
             stdscr, x, y, grid[y][x], PATH, width, height,
             offset_x, offset_y, path
         )
-
         draw_overlay(
             stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
         )
         draw_overlay(
             stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y
         )
-
         stdscr.refresh()
         time.sleep(delay)
 
@@ -487,7 +477,6 @@ def animate_generation(
     """
     stdscr.clear()
 
-    # Draw initial un-carved blocks
     for y in range(height):
         for x in range(width):
             if gen.grid[y][x] == 15 and (x, y) in gen.visited:
@@ -565,16 +554,11 @@ def _main(
     #     stdscr, gen, width, height, entry, exit_,
     #     offset_x=offset_x, offset_y=offset_y
     # )
+
     gen.generate(start_pos=entry)
     draw_maze(
-        stdscr,
-        gen.grid,
-        width,
-        height,
-        entry,
-        exit_,
-        offset_x=offset_x,
-        offset_y=offset_y,
+        stdscr, gen.grid, width, height, entry, exit_,
+        offset_x=offset_x, offset_y=offset_y,
     )
 
     path = get_path(gen, entry, exit_)
@@ -607,14 +591,8 @@ def _main(
             # )
             gen.generate(start_pos=entry)
             draw_maze(
-                stdscr,
-                gen.grid,
-                width,
-                height,
-                entry,
-                exit_,
-                offset_x=offset_x,
-                offset_y=offset_y,
+                stdscr, gen.grid, width, height, entry, exit_,
+                offset_x=offset_x, offset_y=offset_y,
             )
             path = get_path(gen, entry, exit_)
             if show_path:
