@@ -1,8 +1,11 @@
+"""Entry point for the A-Maze-ing maze generator."""
+
 import sys
+
 from core.config_parser import parse_config
-from mazegen.generator import MazeGenerator
 from core.output_writer import write_output
 from display.curses_display import run
+from mazegen.generator import MazeGenerator
 
 
 def main() -> None:
