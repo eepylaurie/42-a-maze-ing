@@ -1,55 +1,63 @@
+"""Labyrinth-Generator mit rekursivem Backtracking und BFS-Solver.
+
+Dieses Modul stellt die MazeGenerator-Klasse bereit, die Labyrinthe
+mit dem randomisierten rekursiven Backtracking-Algorithmus generiert,
+ein '42'-Muster einbettet und Labyrinthe per Breitensuche löst.
+"""
+
 import random
 from collections import deque
 from typing import Optional
 
-# Konstanten für die Himmelsrichtungen (Bits)
+# Himmelsrichtungen als Bit-Konstanten
 N, E, S, W = 1, 2, 4, 8
 OPPOSITE = {N: S, S: N, E: W, W: E}
 MOVE = {N: (0, -1), S: (0, 1), E: (1, 0), W: (-1, 0)}
-DIR_MAP = {N: 'N', E: 'E', S: 'S', W: 'W'}
+DIR_MAP = {N: "N", E: "E", S: "S", W: "W"}
+
+MIN_SIZE_FOR_42 = 10
 
 
 class MazeGenerator:
-    """
-    Ein modularer Labyrinth-Generator mit Bit-Logik, 42-Muster und BFS-Solver.
-    """
+    """Modularer Labyrinth-Generator mit Bit-Logik, 42-Muster und BFS."""
 
-    def __init__(self, width: int, height: int, seed: Optional[int] = None):
-        """
-        Initialisiert den Generator.
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        seed: Optional[int] = None,
+    ) -> None:
+        """Initialisiert den Generator.
 
         Args:
-            width (int): Breite des Labyrinths.
-            height (int): Höhe des Labyrinths.
-            seed (Optional[int]): Optionaler Seed für reproduzierbare
-            Ergebnisse.
+            width: Breite des Labyrinths in Zellen.
+            height: Höhe des Labyrinths in Zellen.
+            seed: Optionaler Seed für reproduzierbare Ergebnisse.
         """
         self.width = width
         self.height = height
-        if seed is not None:
-            random.seed(seed)
-        # Initialisierung der Datenstrukturen
+        self.seed = seed
         self.grid: list[list[int]] = []
         self.visited: set[tuple[int, int]] = set()
 
     def _apply_42_pattern(self) -> None:
+        """Reserviert Zellen für das '42'-Muster vor dem Generieren.
+
+        Gibt eine Warnung aus wenn das Labyrinth zu klein ist.
         """
-        Markiert Zellen für das '42'-Muster als besucht,
-        um Platz zu reservieren.
-        Gibt eine Warnung aus, wenn das Labyrinth kleiner als 10x10 ist.
-        """
-        if self.width < 10 or self.height < 10:
+        if self.width < MIN_SIZE_FOR_42 or self.height < MIN_SIZE_FOR_42:
             print("Warning: Maze too small to display '42' pattern.")
             return
 
         offset_x = max(0, self.width // 2 - 3)
         offset_y = max(0, self.height // 2 - 2)
+
         # Koordinaten für die Ziffern "4" und "2"
         pattern = [
             (0, 0), (0, 1), (0, 2), (1, 2), (2, 0),
-            (2, 1), (2, 2), (2, 3), (2, 4),
-            (4, 0), (5, 0), (6, 0), (6, 1), (6, 2),
-            (5, 2), (4, 2), (4, 3), (4, 4), (5, 4), (6, 4)
+            (2, 1), (2, 2), (2, 3), (2, 4), (4, 0),
+            (5, 0), (6, 0), (6, 1), (6, 2), (5, 2),
+            (4, 2), (4, 3), (4, 4), (5, 4), (6, 4),
         ]
         for px, py in pattern:
             nx, ny = offset_x + px, offset_y + py
@@ -57,15 +65,19 @@ class MazeGenerator:
                 self.visited.add((nx, ny))
 
     def generate(self, start_pos: tuple[int, int] = (0, 0)) -> None:
-        """
-        Generiert das Labyrinth mit Randomized Backtracking.
+        """Generiert das Labyrinth mit dem Backtracking-Algorithmus.
 
         Args:
-            start_pos (tuple[int, int]): Startkoordinaten für den Algorithmus.
+            start_pos: Startkoordinaten für den Algorithmus.
         """
         # Reset für saubere Generierung
-        self.grid = [[15 for _ in range(self.width)]
-                     for _ in range(self.height)]
+        if self.seed is not None:
+            random.seed(self.seed)
+
+        self.grid = [
+            [15 for _ in range(self.width)]
+            for _ in range(self.height)
+        ]
         self.visited = set()
 
         # Muster reservieren
@@ -79,15 +91,15 @@ class MazeGenerator:
                     if (x, y) not in self.visited:
                         actual_start = (x, y)
                         break
+
         self._backtrack(actual_start[0], actual_start[1])
 
     def _backtrack(self, x: int, y: int) -> None:
-        """
-        Interner rekursiver Backtracking-Algorithmus.
+        """Rekursiver Backtracking-Algorithmus zum Generieren der Gänge.
 
         Args:
-            x (int): Aktuelle X-Koordinate.
-            y (int): Aktuelle Y-Koordinate.
+            x: Aktuelle X-Koordinate.
+            y: Aktuelle Y-Koordinate.
         """
         self.visited.add((x, y))
         directions = list(MOVE.keys())
@@ -98,7 +110,8 @@ class MazeGenerator:
             nx, ny = x + dx, y + dy
 
             if (
-                0 <= nx < self.width and 0 <= ny < self.height
+                0 <= nx < self.width
+                and 0 <= ny < self.height
                 and (nx, ny) not in self.visited
             ):
                 # Mauern zwischen aktueller und nächster Zelle entfernen
@@ -107,18 +120,17 @@ class MazeGenerator:
                 self._backtrack(nx, ny)
 
     def solve(self, start: tuple[int, int], end: tuple[int, int]) -> str:
-        """
-        Findet den kürzesten Weg von Start zu Ende mittels BFS.
+        """Findet den kürzesten Weg von Start zu Ende mittels BFS.
 
         Args:
-            start (Tuple[int, int]): Startpunkt (x, y).
-            end (Tuple[int, int]): Zielpunkt (x, y).
+            start: Startpunkt als (x, y).
+            end: Zielpunkt als (x, y).
 
         Returns:
-            str: Pfad als String (z.B. "EENSSW") oder leerer String.
+            Pfad als String aus N/E/S/W, oder leerer String, wenn kein Pfad.
         """
-        queue = deque([(start, "")])
-        visited_solve = {start}
+        queue: deque[tuple[tuple[int, int], str]] = deque([(start, "")])
+        visited_solve: set[tuple[int, int]] = {start}
 
         while queue:
             (x, y), path = queue.popleft()
@@ -138,27 +150,27 @@ class MazeGenerator:
         return ""
 
     def validate_no_2x2_area(self) -> bool:
-        """
-        Prüft auf 2x2 Bereiche ohne innere Wände.
+        """Prüft ob ein 2x2 offener Bereich im Labyrinth existiert.
 
         Returns:
-            bool: True, wenn keine 2x2 Freiflächen existieren, sonst False.
+            True wenn kein Verstoß gefunden, False wenn doch.
         """
         for y in range(self.height - 1):
             for x in range(self.width - 1):
                 # Check ob die inneren Wände eines 2x2 Blocks alle fehlen
-                if not (self.grid[y][x] & S) and \
-                   not (self.grid[y][x] & E) and \
-                   not (self.grid[y+1][x+1] & N) and \
-                   not (self.grid[y+1][x+1] & W):
+                if (
+                    not (self.grid[y][x] & S)
+                    and not (self.grid[y][x] & E)
+                    and not (self.grid[y + 1][x + 1] & N)
+                    and not (self.grid[y + 1][x + 1] & W)
+                ):
                     return False
         return True
 
     def get_hex_layout(self) -> list[str]:
-        """
-        Gibt das Labyrinth als Liste von Hexadezimal-Strings zurück.
+        """Gibt das Labyrinth als Liste von Hex-Strings zurück.
 
         Returns:
-            List[str]: Jede Zeile als Hex-String.
+            Liste von Strings, eine pro Zeile, jede Zelle als Hex-Ziffer.
         """
         return ["".join(f"{cell:X}" for cell in row) for row in self.grid]
