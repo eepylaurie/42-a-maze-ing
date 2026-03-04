@@ -5,7 +5,7 @@ import random
 import time
 from typing import Optional
 
-from dummy_gen import MazeGenerator
+from mazegen.generator import MazeGenerator
 
 # Bitwise directions and cell dimensions
 N, E, S, W = 1, 2, 4, 8
@@ -495,15 +495,8 @@ def animate_generation(
             else:
                 color = CORRIDOR
             draw_cell(
-                stdscr,
-                x,
-                y,
-                gen.grid[y][x],
-                color,
-                width,
-                height,
-                offset_x,
-                offset_y
+                stdscr, x, y, gen.grid[y][x], color, width, height,
+                offset_x, offset_y,
             )
 
     draw_overlay(stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y)
@@ -514,15 +507,8 @@ def animate_generation(
     for x, y in gen.generate(start_pos=entry):
         color = PATTERN_COLOR if gen.grid[y][x] == 15 else CORRIDOR
         draw_cell(
-            stdscr,
-            x,
-            y,
-            gen.grid[y][x],
-            color,
-            width,
-            height,
-            offset_x,
-            offset_y
+            stdscr, x, y, gen.grid[y][x], color, width, height,
+            offset_x, offset_y,
         )
         draw_overlay(
             stdscr, entry[0], entry[1], ENTRY_COLOR, offset_x, offset_y
@@ -575,9 +561,20 @@ def _main(
     current_theme_idx = 0
     apply_theme(theme_names[current_theme_idx])
 
-    animate_generation(
-        stdscr, gen, width, height, entry, exit_,
-        offset_x=offset_x, offset_y=offset_y
+    # animate_generation(
+    #     stdscr, gen, width, height, entry, exit_,
+    #     offset_x=offset_x, offset_y=offset_y
+    # )
+    gen.generate(start_pos=entry)
+    draw_maze(
+        stdscr,
+        gen.grid,
+        width,
+        height,
+        entry,
+        exit_,
+        offset_x=offset_x,
+        offset_y=offset_y,
     )
 
     path = get_path(gen, entry, exit_)
@@ -591,16 +588,8 @@ def _main(
         offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
 
         draw_maze(
-            stdscr,
-            gen.grid,
-            width,
-            height,
-            entry,
-            exit_,
-            path,
-            show_path,
-            offset_x,
-            offset_y,
+            stdscr, gen.grid, width, height, entry, exit_, path, show_path,
+            offset_x, offset_y,
         )
 
         action = show_menu(
@@ -612,9 +601,14 @@ def _main(
         elif action == "regenerate":
             seed += 1
             gen = MazeGenerator(width=width, height=height, seed=seed)
-            animate_generation(
+            # animate_generation(
+            #     stdscr, gen, width, height, entry, exit_,
+            #     offset_x=offset_x, offset_y=offset_y,
+            # )
+            gen.generate(start_pos=entry)
+            draw_maze(
                 stdscr,
-                gen,
+                gen.grid,
                 width,
                 height,
                 entry,
@@ -625,56 +619,27 @@ def _main(
             path = get_path(gen, entry, exit_)
             if show_path:
                 animate_path(
-                    stdscr,
-                    gen.grid,
-                    width,
-                    height,
-                    entry,
-                    exit_,
-                    path,
-                    offset_x=offset_x,
-                    offset_y=offset_y,
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
                 )
         elif action == "path":
             show_path = not show_path
             if show_path:
                 animate_path(
-                    stdscr,
-                    gen.grid,
-                    width,
-                    height,
-                    entry,
-                    exit_,
-                    path,
-                    offset_x=offset_x,
-                    offset_y=offset_y,
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
                 )
         elif action == "color":
             current_theme_idx = (current_theme_idx + 1) % len(theme_names)
             apply_theme(theme_names[current_theme_idx])
             if show_path:
                 draw_maze(
-                    stdscr,
-                    gen.grid,
-                    width,
-                    height,
-                    entry,
-                    exit_,
-                    path,
-                    False,
-                    offset_x,
-                    offset_y,
+                    stdscr, gen.grid, width, height, entry, exit_, path, False,
+                    offset_x, offset_y,
                 )
                 animate_path(
-                    stdscr,
-                    gen.grid,
-                    width,
-                    height,
-                    entry,
-                    exit_,
-                    path,
-                    offset_x=offset_x,
-                    offset_y=offset_y,
+                    stdscr, gen.grid, width, height, entry, exit_, path,
+                    offset_x=offset_x, offset_y=offset_y,
                 )
 
 
