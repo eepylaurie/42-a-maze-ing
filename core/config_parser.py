@@ -3,7 +3,7 @@
 REQUIRED_KEYS = {"WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT"}
 
 
-def parse_config(filename: str) -> dict | None:
+def parse_config(filename: str) -> dict[str, object] | None:
     """Read and validate the configuration file.
 
     Args:
@@ -12,7 +12,7 @@ def parse_config(filename: str) -> dict | None:
     Returns:
         Dictionary with configuration values, or None on error.
     """
-    config: dict = {}
+    config: dict[str, object] = {}
 
     try:
         with open(filename, "r") as f:
