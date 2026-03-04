@@ -1,3 +1,0 @@
-[flake8]
-exclude = venv, .git, __pycache__, .mypy_cache, dist, build
-max-line-length = 79
