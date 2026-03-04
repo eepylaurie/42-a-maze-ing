@@ -6,6 +6,7 @@ ein '42'-Muster einbettet und Labyrinthe per Breitensuche löst.
 """
 
 import random
+import sys
 from collections import deque
 from typing import Optional
 
@@ -16,6 +17,9 @@ MOVE = {N: (0, -1), S: (0, 1), E: (1, 0), W: (-1, 0)}
 DIR_MAP = {N: "N", E: "E", S: "S", W: "W"}
 
 MIN_SIZE_FOR_42 = 10
+
+# Increase recursion limit for large maze generation
+sys.setrecursionlimit(10000)
 
 
 class MazeGenerator:
