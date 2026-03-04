@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mazegen-ekypraio-lmatthes"
+version = "1.0.0"
+description = "Procedural maze generator with 42 pattern, BFS solver and terminal display."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "ekypraio", email = "ekypraio@student.42heilbronn.de" },
+    { name = "lmatthes", email = "lmatthes@student.42heilbronn.de" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mazegen*"]
