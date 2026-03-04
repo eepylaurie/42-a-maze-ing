@@ -303,12 +303,12 @@ def show_start_screen(stdscr: curses.window) -> None:
     start_col = max(0, screen_w // 2 - total_w // 2)
     start_row = max(0, screen_h // 2 - 8)
 
-    blocks = []
+    blocks: list[tuple[int, int]] = []
     for i, char in enumerate(title):
         letter = letters.get(char, letters[" "])
         letter_col = start_col + i * (5 * cell_w + spacing)
-        for row_idx, row in enumerate(letter):
-            for col_idx, pixel in enumerate(row):
+        for row_idx, letter_row in enumerate(letter):
+            for col_idx, pixel in enumerate(letter_row):
                 if pixel == "X":
                     blocks.append((
                         start_row + row_idx,
@@ -503,8 +503,7 @@ def animate_generation(
     draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
     stdscr.refresh()
 
-    # Animate carving steps
-    for x, y in gen.generate(start_pos=entry):
+    for x, y in gen.generate(start_pos=entry):  # type: ignore
         color = PATTERN_COLOR if gen.grid[y][x] == 15 else CORRIDOR
         draw_cell(
             stdscr, x, y, gen.grid[y][x], color, width, height,

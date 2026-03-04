@@ -1,9 +1,11 @@
 """Configuration file parser for A-Maze-ing."""
 
+from typing import Any
+
 REQUIRED_KEYS = {"WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT"}
 
 
-def parse_config(filename: str) -> dict[str, object] | None:
+def parse_config(filename: str) -> dict[str, Any] | None:
     """Read and validate the configuration file.
 
     Args:
