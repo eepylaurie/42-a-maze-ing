@@ -22,11 +22,11 @@ PATTERN_COLOR = 6
 
 
 def rgb_to_curses(r: int, g: int, b: int) -> tuple[int, int, int]:
-    """Convert standard RGB (0-255) to curses RGB scale (0-1000)"""
+    """Convert standard RGB (0-255) to curses RGB scale (0-1000)."""
     return int(r / 255 * 1000), int(g / 255 * 1000), int(b / 255 * 1000)
 
 
-THEMES = {
+THEMES: dict[str, dict[str, tuple[int, int, int]]] = {
     "42": {
         "wall": (2, 189, 171),
         "corridor": (0, 0, 0),
@@ -367,7 +367,7 @@ def show_menu(
     ]
     actions = ["regenerate", "path", "color", "quit"]
     selected = 0
-    screen_h, screen_w = stdscr.getmaxyx()
+    _, screen_w = stdscr.getmaxyx()
     maze_bottom = offset_y + height * (CELL_H + 1) + 1
     menu_start_row = maze_bottom + 2
     maze_width_cols = width * (CELL_W + 1) + 1
