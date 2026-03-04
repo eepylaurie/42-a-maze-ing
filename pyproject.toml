@@ -3,13 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mazegen"
-version = "0.1.0"
-description = "A-maze-ing: Ein modularer Labyrinth-Generator für das 42 Projekt."
+name = "mazegen-ekypraio-lmatthes"
+version = "1.0.0"
+description = "Procedural maze generator with 42 pattern, BFS solver and terminal display."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "Dein Name", email = "deine.email@example.com" }
+    { name = "ekypraio", email = "ekypraio@student.42heilbronn.de" },
+    { name = "lmatthes", email = "lmatthes@student.42heilbronn.de" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
