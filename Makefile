@@ -1,4 +1,4 @@
-.PHONY: install run debug clean lint lint-strict test
+.PHONY: install run debug clean lint lint-strict build test
 
 install:
 	pip install -r requirements.txt
@@ -14,6 +14,8 @@ clean:
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
 
 lint:
 	flake8 .
@@ -24,6 +26,9 @@ lint:
 lint-strict:
 	flake8 .
 	mypy . --strict
+
+build:
+	python3 -m build
 
 test:
 	pytest tests/ -v
