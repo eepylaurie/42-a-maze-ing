@@ -22,7 +22,13 @@ def main() -> None:
     )
     gen.generate(start_pos=config["ENTRY"])
 
-    write_output(gen, config["OUTPUT_FILE"])
+    write_output(
+        config["OUTPUT_FILE"],
+        gen.get_hex_layout(),
+        config["ENTRY"],
+        config["EXIT"],
+        gen.solve(start=config["ENTRY"], end=config["EXIT"]),
+    )
 
     run(
         width=config["WIDTH"],
