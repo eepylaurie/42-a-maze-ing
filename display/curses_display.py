@@ -1,4 +1,7 @@
+"""Curses-based graphical terminal display for A-Maze-ing."""
+
 import curses
+import random
 import time
 from typing import Optional
 
@@ -134,7 +137,7 @@ def draw_cell(
         cell: Wall bitmask for this cell.
         color_pair: Curses color pair to use for the cell interior.
         width: Total maze width in cells.
-        height: total maze height in cells.
+        height: Total maze height in cells.
         offset_x: Horizontal terminal offset for centering.
         offset_y: Vertical terminal offset for centering.
         path: Solution path list, used for smart wall erasing.
@@ -183,7 +186,7 @@ def draw_cell(
             for r in range(CELL_H + 1):
                 stdscr.addstr(row + r - 1, col + CELL_W, " ", wall_pair)
 
-        # Draw South boundery
+        # Draw South boundary
         if y == height - 1:
             stdscr.addstr(row + CELL_H, col - 1, " " * (CELL_W + 2), wall_pair)
 
@@ -214,6 +217,8 @@ def draw_maze(
         exit_: Exit coordinates as (x, y).
         path: List of (x, y) coordinates forming the solution path.
         show_path: Whether to display the solution path.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
     """
     if path is None:
         path = []
@@ -310,8 +315,7 @@ def show_start_screen(stdscr: curses.window) -> None:
                         letter_col + col_idx * cell_w,
                     ))
 
-    import random as rnd
-    rnd.shuffle(blocks)
+    random.shuffle(blocks)
     for row, col in blocks:
         try:
             stdscr.addstr(row, col, " " * cell_w, curses.color_pair(WALL))
@@ -346,6 +350,10 @@ def show_menu(
     Args:
         stdscr: The curses screen object.
         show_path: Current path visibility state (to show correct label).
+        width: Maze width in cells.
+        height: Maze height in cells.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
 
     Returns:
         A string indicating the selected action:
@@ -371,8 +379,8 @@ def show_menu(
                 stdscr.addstr(menu_start_row + i, 0, " " * screen_w)
             except curses.error:
                 pass
+        max_len = max(len(o) for o in options) + 6
         for i, option in enumerate(options):
-            max_len = max(len(o) for o in options) + 6
             col = center_col - max_len // 2
             try:
                 if i == selected:
@@ -401,7 +409,7 @@ def show_menu(
         elif key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             return actions[selected]
         elif key == ord("q") or key == ord("4"):
-            return ("quit")
+            return "quit"
         elif key == ord("r") or key == ord("1"):
             return "regenerate"
         elif key == ord("p") or key == ord("2"):
@@ -433,6 +441,8 @@ def animate_path(
         exit_: Exit coordinates as (x, y).
         path: List of (x, y) coordinates forming the solution path.
         delay: Time in seconds to wait between drawing each cell.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
     """
     for x, y in path:
         draw_cell(
@@ -462,7 +472,19 @@ def animate_generation(
     offset_x: int = 0,
     offset_y: int = 0,
 ) -> None:
-    """Animate the maze being carved step-by-step."""
+    """Animate the maze being carved step-by-step.
+
+    Args:
+        stdscr: The curses screen object.
+        gen: A MazeGenerator instance to generate and animate.
+        width: Maze width in cells.
+        height: Maze height in cells.
+        entry: Entry coordinates as (x, y).
+        exit_: Exit coordinates as (x, y).
+        delay: Time in seconds between each carved cell.
+        offset_x: Horizontal terminal offset for centering.
+        offset_y: Vertical terminal offset for centering.
+    """
     stdscr.clear()
 
     # Draw initial un-carved blocks
@@ -490,6 +512,7 @@ def animate_generation(
 
     # Animate carving steps
     for x, y in gen.generate(start_pos=entry):
+        color = PATTERN_COLOR if gen.grid[y][x] == 15 else CORRIDOR
         draw_cell(
             stdscr,
             x,
