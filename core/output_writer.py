@@ -1,7 +1,7 @@
 """Output writer for A-Maze-ing."""
 
 
-def save_maze_to_file(
+def write_output(
     file_path: str,
     hex_grid: list[str],
     entry: tuple[int, int],
