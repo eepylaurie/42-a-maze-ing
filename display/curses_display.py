@@ -543,6 +543,11 @@ def _main(
         pass
 
     stdscr.keypad(True)
+
+    theme_names = list(THEMES.keys())
+    current_theme_idx = 0
+    apply_theme(theme_names[current_theme_idx])
+
     show_start_screen(stdscr)
 
     seed = 42
@@ -556,10 +561,6 @@ def _main(
     menu_h = 6
     offset_x = max(0, (screen_w - maze_w) // 2)
     offset_y = max(0, (screen_h - (maze_h + menu_h)) // 2)
-
-    theme_names = list(THEMES.keys())
-    current_theme_idx = 0
-    apply_theme(theme_names[current_theme_idx])
 
     # animate_generation(
     #     stdscr, gen, width, height, entry, exit_,
