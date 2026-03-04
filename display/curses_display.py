@@ -622,10 +622,10 @@ def _main(
 
 
 def run(
-    width: int = 20,
-    height: int = 15,
-    entry: tuple[int, int] = (0, 0),
-    exit_: tuple[int, int] = (19, 14),
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
 ) -> None:
     """Start the curses maze display.
 
