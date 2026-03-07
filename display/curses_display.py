@@ -1,7 +1,6 @@
 """Curses-based graphical terminal display for A-Maze-ing."""
 
 import curses
-import random
 import time
 from typing import Optional
 
@@ -269,66 +268,6 @@ def get_path(
     return path
 
 
-def show_start_screen(stdscr: curses.window) -> None:
-    """Display the animated A_MAZE_ING title sequence.
-
-    Args:
-        stdscr: The curses screen object.
-    """
-    stdscr.clear()
-    screen_h, screen_w = stdscr.getmaxyx()
-    letters = {
-        "A": ["XXXXX", "X...X", "XXXXX", "X...X", "X...X"],
-        "M": ["XXXXX", "X.X.X", "X.X.X", "X.X.X", "X.X.X"],
-        "Z": ["XXXXX", "....X", "XXXXX", "X....", "XXXXX"],
-        "E": ["XXXXX", "X....", "XXXXX", "X....", "XXXXX"],
-        "I": ["XXXXX", "..X..", "..X..", "..X..", "XXXXX"],
-        "N": ["XXXXX", "X...X", "X...X", "X...X", "X...X"],
-        "G": ["XXXXX", "X....", "X.XXX", "X...X", "XXXXX"],
-        "_": [".....", ".....", ".....", ".....", "XXXXX"],
-        " ": [".....", ".....", ".....", ".....", "....."],
-    }
-    title = "A_MAZE_ING"
-    cell_w = 2
-    spacing = 1
-    total_w = len(title) * (5 * cell_w + spacing)
-    start_col = max(0, screen_w // 2 - total_w // 2)
-    start_row = max(0, screen_h // 2 - 8)
-
-    blocks: list[tuple[int, int]] = []
-    for i, char in enumerate(title):
-        letter = letters.get(char, letters[" "])
-        letter_col = start_col + i * (5 * cell_w + spacing)
-        for row_idx, letter_row in enumerate(letter):
-            for col_idx, pixel in enumerate(letter_row):
-                if pixel == "X":
-                    blocks.append((
-                        start_row + row_idx,
-                        letter_col + col_idx * cell_w,
-                    ))
-
-    random.shuffle(blocks)
-    for row, col in blocks:
-        try:
-            stdscr.addstr(row, col, " " * cell_w, curses.color_pair(WALL))
-            stdscr.refresh()
-            time.sleep(0.01)
-        except curses.error:
-            pass
-
-    prompt = "Press any key to start..."
-    try:
-        stdscr.addstr(
-            start_row + 8,
-            screen_w // 2 - len(prompt) // 2,
-            prompt,
-        )
-    except curses.error:
-        pass
-    stdscr.refresh()
-    stdscr.getch()
-
-
 def show_menu(
     stdscr: curses.window,
     show_path: bool,
@@ -535,8 +474,6 @@ def _main(
     theme_names = list(THEMES.keys())
     current_theme_idx = 0
     apply_theme(theme_names[current_theme_idx])
-
-    show_start_screen(stdscr)
 
     seed = 42
     show_path = False
