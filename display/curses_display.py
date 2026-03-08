@@ -77,10 +77,10 @@ def init_colors() -> None:
     """Set fallback colors if terminal doesn't support custom RGB."""
     curses.start_color()
     curses.use_default_colors()
-    curses.init_pair(WALL, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
+    curses.init_pair(WALL, curses.COLOR_CYAN, curses.COLOR_CYAN)
     curses.init_pair(CORRIDOR, curses.COLOR_BLACK, curses.COLOR_BLACK)
-    curses.init_pair(PATH, curses.COLOR_CYAN, curses.COLOR_CYAN)
-    curses.init_pair(ENTRY_COLOR, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
+    curses.init_pair(PATH, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
+    curses.init_pair(ENTRY_COLOR, curses.COLOR_GREEN, curses.COLOR_GREEN)
     curses.init_pair(EXIT_COLOR, curses.COLOR_RED, curses.COLOR_RED)
     curses.init_pair(PATTERN_COLOR, curses.COLOR_WHITE, curses.COLOR_WHITE)
 
