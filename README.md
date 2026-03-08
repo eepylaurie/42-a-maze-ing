@@ -92,11 +92,11 @@ Recursive backtracking was chosen because it is straightforward to implement, pr
 
 The terminal display is built with Python's `curses` library. User interactions:
 
-- **Arrow keys + Enter** to navigate the menu
-- Re-generate a new maze
-- Show or hide the shortest solution path (animated)
-- Rotate through color themes (42, Laurie, Elef)
-- Quit
+- **Arrow keys + Enter** — Navigate the menu
+- **Re-generate** — Generate a new maze
+- **Show/Hide path** — Animate and display the shortest solution path
+- **Rotate colors** — Cycle through color themes (42, Laurie, Elef)
+- **Quit** — Exit the program
 
 ## Reusable Module
 
