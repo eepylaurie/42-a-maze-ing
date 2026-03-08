@@ -339,14 +339,6 @@ def show_menu(
             selected = (selected + 1) % len(options)
         elif key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             return actions[selected]
-        elif key == ord("q") or key == ord("4"):
-            return "quit"
-        elif key == ord("r") or key == ord("1"):
-            return "regenerate"
-        elif key == ord("p") or key == ord("2"):
-            return "path"
-        elif key == ord("c") or key == ord("3"):
-            return "color"
 
 
 def animate_path(
