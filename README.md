@@ -131,6 +131,72 @@ solution = gen.solve(start=(0, 0), end=(19, 14))
 print(solution)
 ```
 
+### Parameters
+
+| **Parameter** | **Type** | **Description** |
+| ------------- | -------- | --------------- |
+| `width` | `int` | Maze width in cells |
+| `height` | `int` | Maze height in cells |
+| `seed` | `int` | Optional seed for reproducibility |
+
+### Methods
+
+| **Method** | **Returns** | **Description** |
+| ---------- | ----------- | --------------- |
+| `generate(start_pos)` | `None` | Generate the maze |
+| `solve(start, end)` | `str` | BFS shortest path as N/E/S/W string |
+| `get_hex_layout()` | `list[str]` | Maze as hex strings |
+| `validate_no_2x2_area()` | `bool` | Check no illegal open areas exist |
+
+## Team and Project Management
+
+### Roles
+
+- **ekypraio** — Maze generator (`mazegen/generator.py`), package configuration
+  (`pyproject.toml`), config parser (`core/config_parser.py`), output writer (`core/output_writer.py`)
+- **lmatthes** — Terminal display (`display/curses_display.py`), entry point
+  (`a_maze_ing.py`), Makefile, requirements
+- **Shared** — Configuration file format, integration, code review, git workflow
+
+### Planning
+
+We started by defining a clear split: one person on the generator, one on the
+display. We worked on separate git branches and met every other day to explain
+progress, review each other's code, and integrate. The plan stayed largely on
+track — the main adjustment was spending more time than expected on the curses
+display and resolving merge conflicts as we integrated the two halves.
+
+### What worked well
+
+The branch-based workflow kept our work independent and clean. Peer reviews
+helped us catch bugs and inconsistencies early. The bitmask representation for
+walls worked well across both the generator and the display.
+
+### What could be improved
+
+This was our first time working with git branches and we ran into merge conflicts
+and push issues a few times. With more experience we would have communicated
+more explicitly about shared files like `config_parser.py` to avoid conflicts.
+
+### Tools used
+
+- **VS Code** — Primary editor for both team members
+- **Git / GitHub** — Version control with feature branches and pull requests
+- **pip / venv** — Dependency management and isolated development environment
+- **flake8** — Code style and linting
+- **mypy** — Static type checking
+- **pytest** — Unit testing
+- **Python build** — Packaging the reusable mazegen module
+
 ## Resources
 
 ### AI Usage
+
+AI was used during this project for the following tasks:
+
+- Generating an initial project plan and structure, including file responsibilities per team member
+- Suggesting git workflows and commands for branch-based collaboration
+- Reviewing code against project requirements (flake8, mypy, docstrings, type hints)
+- Debugging type errors and fixing formatting inconsistencies
+
+**All code logic and implementation were written and understood by the team.**
