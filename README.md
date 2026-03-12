@@ -189,6 +189,12 @@ more explicitly about shared files like `config_parser.py` to avoid conflicts.
 - **Python build** — Packaging the reusable mazegen module
 
 ## Resources
+- [Artificial Intelligence Search Problem: Solve Maze using Breadth First Search (BFS) Algorithm](https://medium.com/@luthfisauqi17_68455/artificial-intelligence-search-problem-solve-maze-using-breadth-first-search-bfs-algorithm-255139c6e1a3)
+- [Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search)
+- [Breadth First Search or BFS for a Graph](https://www.geeksforgeeks.org/dsa/breadth-first-search-or-bfs-for-a-graph/)
+- [Curses — Terminal handling for character-cell displays](https://docs.python.org/3/library/curses.html)
+- [Python Curses Module](https://www.w3schools.com/python/ref_module_curses.asp)
+- [Creating Menu Display for Terminal](https://www.youtube.com/watch?v=zwMsmBsC1GM)
 
 ### AI Usage
 
