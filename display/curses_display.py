@@ -423,7 +423,7 @@ def animate_generation(
     draw_overlay(stdscr, exit_[0], exit_[1], EXIT_COLOR, offset_x, offset_y)
     stdscr.refresh()
 
-    for x, y in gen.generate(start_pos=entry):  # type: ignore
+    for x, y in gen.generate_animated(start_pos=entry):
         color = PATTERN_COLOR if gen.grid[y][x] == 15 else CORRIDOR
         draw_cell(
             stdscr, x, y, gen.grid[y][x], color, width, height,
@@ -445,6 +445,7 @@ def _main(
     height: int,
     entry: tuple[int, int],
     exit_: tuple[int, int],
+    seed: Optional[int] = None,
 ) -> None:
     """Main curses loop.
 
@@ -454,6 +455,7 @@ def _main(
         height: Maze height in cells.
         entry: Entry coordinates as (x, y).
         exit_: Exit coordinates as (x, y).
+        seed: Optional seed for reproducible generation.
     """
     init_colors()
     try:
@@ -467,7 +469,8 @@ def _main(
     current_theme_idx = 0
     apply_theme(theme_names[current_theme_idx])
 
-    seed = 42
+    if seed is None:
+        seed = 42
     show_path = False
 
     gen = MazeGenerator(width=width, height=height, seed=seed)
@@ -555,6 +558,7 @@ def run(
     height: int,
     entry: tuple[int, int],
     exit_: tuple[int, int],
+    seed: Optional[int] = None,
 ) -> None:
     """Start the curses maze display.
 
@@ -563,9 +567,12 @@ def run(
         height: Maze height in cells.
         entry: Entry coordinates as (x, y).
         exit_: Exit coordinates as (x, y).
+        seed: Optional seed for reproducible generation.
     """
-    curses.wrapper(lambda stdscr: _main(stdscr, width, height, entry, exit_))
+    curses.wrapper(
+        lambda stdscr: _main(stdscr, width, height, entry, exit_, seed)
+    )
 
 
 if __name__ == "__main__":
-    run()
+    run(width=20, height=15, entry=(0, 0), exit_=(19, 14))

@@ -18,10 +18,12 @@ def main() -> None:
     if config is None:
         sys.exit(1)
 
+    seed = config.get("SEED")
     gen = MazeGenerator(
         width=config["WIDTH"],
         height=config["HEIGHT"],
-        seed=config.get("SEED"),
+        seed=seed,
+        perfect=config["PERFECT"],
     )
     gen.generate(start_pos=config["ENTRY"])
 
@@ -38,6 +40,7 @@ def main() -> None:
         height=config["HEIGHT"],
         entry=config["ENTRY"],
         exit_=config["EXIT"],
+        seed=seed,
     )
 
 

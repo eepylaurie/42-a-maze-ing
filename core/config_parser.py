@@ -48,4 +48,34 @@ def parse_config(filename: str) -> dict[str, Any] | None:
         print(f"Error: Missing required keys: {', '.join(sorted(missing))}")
         return None
 
+    width = config.get("WIDTH")
+    height = config.get("HEIGHT")
+    if not isinstance(width, int) or not isinstance(height, int):
+        print("Error: WIDTH and HEIGHT must be integers.")
+        return None
+    if width < 1 or height < 1:
+        print(
+            f"Error: Dimensions must be positive "
+            f"(got {width}x{height})."
+        )
+        return None
+
+    entry = config.get("ENTRY")
+    exit_ = config.get("EXIT")
+    if not isinstance(entry, tuple) or not isinstance(exit_, tuple):
+        print("Error: ENTRY/EXIT must be coordinate pairs.")
+        return None
+    ex, ey = entry
+    ox, oy = exit_
+    bounds = f"{width}x{height}"
+    if not (0 <= ex < width and 0 <= ey < height):
+        print(f"Error: ENTRY {entry} out of bounds ({bounds}).")
+        return None
+    if not (0 <= ox < width and 0 <= oy < height):
+        print(f"Error: EXIT {exit_} out of bounds ({bounds}).")
+        return None
+    if entry == exit_:
+        print("Error: ENTRY and EXIT must differ.")
+        return None
+
     return config
